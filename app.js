@@ -56,5 +56,112 @@ app.get("/states/", async (request, response) => {
     FROM state
     ORDER BY state_id;`;
   const statesList = await db.all(allStatesList);
-  const statesResult = state;
+  const statesResult = stateList.map(eachObject)=>{
+      return objectSnakeToCamel(eachObject);
+  };
+  response.send(statesResult);
 });
+
+app.get("/states/:stateId/", async (request, response) => {
+    const createDistrict = request.body;
+    const {
+        districtName,
+        stateId,
+        cases,
+        cured,
+        active,
+        deaths,
+    } = createDistrict;
+    const newDistrict = `
+    INSERT INTO
+    district (district_name, state_id, cases, cured,active, deaths)
+    VALUES
+    ('${districtName}',
+    ${stateId},
+    ${cases},
+    ${curred},
+    ${active},
+    ${deaths});
+    `;
+    const addDistrict = await bd.run(newDistrict);
+    const districtId = addDistrict.lastId;
+    response.send("District successfully Added");
+});
+
+app.get("/districts/:districtId",async(request, response) => {
+    const {districtId} = request.params;
+    const getDistrict = `
+    SELECT *
+    FROM district
+    WHERE district_id = ${districtId};`;
+    const newDistrict = `
+    SELECT * 
+    FROM district
+    WHERE district_id = ${districtId};`; 
+    const newDistrict = await db.get(getDistrict);
+    const districtResult = districtSnakeToCamel(newDistrict);
+    response.send(districtResult);
+});
+
+app.delete("/districts/:districtId/", async (request, response) => {
+    const {districtId} = request.params;
+    const deleteDistrict = `
+    DELETE
+    FROM district
+    WHERE district_id = ${districtId};`;
+    await db.run(deleteDistrict);
+    response.send("district Removed")
+} );
+
+app.put("/districts/:districtId/",async (request, response) => {
+    const {districtId} = request.params;
+    const districtDetails = request.body,
+    const {
+        districtName,
+        stateId,
+        cases,
+        cured,
+        active,
+        deaths,
+    } = districtDetails;
+    const updateDistrict = `
+    UPDATE
+          district
+    SET
+       district_name = '${districtName}',
+       state_id = ${stateId},
+       cases = ${cases},
+       cured = ${cured},
+       active = ${active},
+       deaths = ${deaths}
+       WHERE district_id = ${districtId};
+    `;
+    await db.run(updateDistrict);
+    response.send("District Details Updated");
+});
+
+app.get("/states/:stateId/stats", async (request , response) =>{
+    const {stateId} = request.params;
+    const getStateReport =`
+    SELECT SUM(cases) AS cases,
+    SUM(cases) AS cured,
+    SUM(active) AS active,
+    SUM(deaths) AS deaths
+    FROM district
+    WHERE state_id = ${stateId};`;
+    const stateReport = await db.get(getStateReport);
+    const resultReport = reportSnakeToCamelCase(stateReport);
+    response.send(resultReport);
+});
+
+
+app.get("/districts/:districtId/details", async (request , response) => {
+    const {districtId} = request.params;
+    const stateDetai = `
+    SELECT state_name
+    FROM state JOIN district.state_id
+    WHERE district.district_id = ${districtId};`;
+    const stateName = await db.get(stateDetails);
+    response.send({ stateName: stateName.state_name});
+});
+module.exports = app;
