@@ -6,6 +6,8 @@ const { open } = require("sqlite");
 app.use(express.json());
 const dbPath = path.join(__dirname, "covid19India.db");
 let db = null;
+
+
 const objectSnakeToCamel = (newObject) => {
   return {
     stateId: newObject.state_id,
@@ -56,14 +58,27 @@ app.get("/states/", async (request, response) => {
     FROM state
     ORDER BY state_id;`;
   const statesList = await db.all(allStatesList);
-  const statesResult = stateList.map(eachObject)=>{
+  const statesResult = statesList.map(eachObject)=>{
       return objectSnakeToCamel(eachObject);
-  };
+  });
   response.send(statesResult);
 });
 
 app.get("/states/:stateId/", async (request, response) => {
-    const createDistrict = request.body;
+    const {stateId} = request.params;
+    const getState = `
+    SELECT *
+    FROM state
+    WHERE
+    state_id = ${stateId};`;
+    const newState = await db.get(getState);
+    const stateResult = objectSnakeToCamel(newState);
+    response.send(stateResult);
+});
+
+
+app.post("/districts/", async(request, response)=> {
+      const createDistrict = request.body;
     const {
         districtName,
         stateId,
@@ -94,10 +109,6 @@ app.get("/districts/:districtId",async(request, response) => {
     SELECT *
     FROM district
     WHERE district_id = ${districtId};`;
-    const newDistrict = `
-    SELECT * 
-    FROM district
-    WHERE district_id = ${districtId};`; 
     const newDistrict = await db.get(getDistrict);
     const districtResult = districtSnakeToCamel(newDistrict);
     response.send(districtResult);
@@ -144,9 +155,9 @@ app.get("/states/:stateId/stats", async (request , response) =>{
     const {stateId} = request.params;
     const getStateReport =`
     SELECT SUM(cases) AS cases,
-    SUM(cases) AS cured,
+    SUM(cured) AS cured,
     SUM(active) AS active,
-    SUM(deaths) AS deaths
+    SUM(deaths) AS deaths,
     FROM district
     WHERE state_id = ${stateId};`;
     const stateReport = await db.get(getStateReport);
@@ -157,9 +168,10 @@ app.get("/states/:stateId/stats", async (request , response) =>{
 
 app.get("/districts/:districtId/details", async (request , response) => {
     const {districtId} = request.params;
-    const stateDetai = `
+    const stateDetails = `
     SELECT state_name
-    FROM state JOIN district.state_id
+    FROM state JOIN district
+    ON state.state_id = district.state_id
     WHERE district.district_id = ${districtId};`;
     const stateName = await db.get(stateDetails);
     response.send({ stateName: stateName.state_name});
